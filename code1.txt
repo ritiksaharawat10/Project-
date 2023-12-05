@@ -1,0 +1,86 @@
+import requests
+import pandas as pd
+import random
+import os
+
+url = "/content/dataset/dataset.txt"
+
+dataframe = pd.read_csv(url, sep="\t")
+
+api_key = "https://api.telegram.org/bot6609728690:AAH6WsqAhH4-hsq8dpWm_pYIXVRDSXztEwU"
+
+
+# read message function
+def read_msg(offset):
+    parameters = {
+        'offset': offset
+    }
+    res = requests.get(api_key + "/getUpdates", data=parameters)
+
+    res2 = res.json()
+    print(res2)
+    for value in res2["result"]:
+        if value["message"]["text"] == "/video":
+            send_video()
+        else:
+            send_message(value["message"]["text"])
+
+    if res2["result"]:
+        return res2["result"][-1]['update_id'] + 1
+
+
+# answer updation function
+def answer_message(message):
+    answer = dataframe.loc[dataframe["Question"].str.lower() == message.lower()]
+    if not answer.empty:
+        answer = answer.iloc[0]['Answer']
+        return answer
+    return "Sorry i couldn't Understand!"
+
+
+# send message function
+def send_message(msg):
+    if msg != "hello":
+        message = answer_message(msg)
+    else:
+        message = msg
+
+    parameter = {
+        'chat_id': "-4043653145",
+        'text': message
+    }
+    response = requests.get(api_key + "/sendMessage", data=parameter)
+    print(response.text)
+
+
+# video function
+def send_video():
+    directory_path = "/content/videos"
+    file_list = os.listdir(directory_path)
+    length = len(file_list)
+    value = random.randrange(0, length)
+
+    for i in file_list:
+        if file_list[value] == ".ipynb_checkpoints":
+            if value <= length:
+                value -= 1
+            elif value == 0:
+                value += 1
+        parameters = {
+            "chat_id": "-4043653145",
+            "caption": "Here's a Video for ya!!"
+        }
+        myfile = open("/content/videos/" + file_list[value], "rb")
+        files = {
+
+            "video": myfile
+
+        }
+        resp = requests.get(api_key + "/sendVideo", data=parameters, files=files)
+        print(resp.text)
+        break
+
+
+offset = 0
+while True:
+    offset = read_msg(offset)
